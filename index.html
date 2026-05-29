@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>工资追踪器</title>
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --gold: #b5873a;
+    --gold-light: #e8c97a;
+    --green: #2e7d56;
+    --red: #b53a3a;
+    --bg: #ffffff;
+    --surface: #fafaf8;
+    --border: #e8e4dc;
+    --border-strong: #d4cfc5;
+    --text: #1a1714;
+    --text-muted: #7a746a;
+    --text-faint: #b0aca4;
+    --accent-bg: #fdf6e8;
+  }
+
+  body {
+    font-family: 'Lato', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  header {
+    background: var(--bg);
+    border-bottom: 2px solid var(--gold);
+    padding: 24px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  }
+
+  .header-title small {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 2px;
+    font-weight: 700;
+  }
+
+  .header-title h1 {
+    font-family: 'PingFang SC', 'Microsoft YaHei', serif;
+    font-size: 26px;
+    color: var(--text);
+    letter-spacing: 1px;
+  }
+
+  .header-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  button {
+    font-family: 'Lato', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    cursor: pointer;
+    border-radius: 5px;
+    font-weight: 700;
+    font-size: 13px;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .btn-primary {
+    background: var(--gold);
+    color: #fff;
+    border: 1px solid var(--gold);
+    padding: 9px 20px;
+  }
+  .btn-primary:hover { background: #9c7230; border-color: #9c7230; }
+
+  .btn-secondary {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border-strong);
+    padding: 9px 20px;
+  }
+  .btn-secondary:hover { background: var(--surface); }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border-strong);
+    padding: 4px 10px;
+    font-size: 12px;
+  }
+  .btn-ghost:hover { background: var(--surface); color: var(--text); }
+
+  .btn-danger {
+    background: transparent;
+    color: var(--red);
+    border: 1px solid #f0c8c8;
+    padding: 4px 10px;
+    font-size: 12px;
+  }
+  .btn-danger:hover { background: #fff0f0; }
+
+  main {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 0 20px 80px;
+  }
+
+  .card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px 26px;
+    margin-top: 24px;
+  }
+
+  .card-title {
+    font-size: 12px;
+    letter-spacing: 1px;
+    color: var(--text-faint);
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+  }
+
+  .saved-badge {
+    font-size: 11px;
+    color: var(--green);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .saved-badge.visible { opacity: 1; }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 16px;
+  }
+
+  .field label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    font-weight: 700;
+  }
+
+  .field input {
+    width: 100%;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    color: var(--text);
+    padding: 9px 13px;
+    font-size: 14px;
+    border-radius: 5px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  .field input:focus {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(181,135,58,0.12);
+  }
+
+  .field input::placeholder { color: var(--text-faint); }
+
+  .preview-hint {
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--gold);
+    font-weight: 700;
+  }
+
+  .form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+  }
+
+  .tabs {
+    display: flex;
+    border-bottom: 2px solid var(--border);
+    margin-top: 28px;
+  }
+
+  .tab-btn {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    padding: 10px 24px;
+    font-size: 13px;
+    letter-spacing: 1px;
+    color: var(--text-faint);
+    border-radius: 0;
+    font-weight: 700;
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .tab-btn.active {
+    color: var(--gold);
+    border-bottom-color: var(--gold);
+    background: transparent;
+  }
+
+  .tab-btn:hover:not(.active) { color: var(--text-muted); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+  }
+
+  thead th {
+    text-align: left;
+    padding: 8px 12px;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    color: var(--text-faint);
+    font-weight: 700;
+    border-bottom: 1.5px solid var(--border);
+    white-space: nowrap;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+
+  tbody tr:hover { background: var(--surface); }
+  tbody tr.editing { background: var(--accent-bg); }
+
+  tbody td {
+    padding: 10px 12px;
+    vertical-align: middle;
+  }
+
+  td.weekend { color: var(--gold); font-weight: 700; }
+  td.hours-cell { color: var(--gold); font-weight: 700; }
+  td.muted { color: var(--text-muted); }
+  td.small { font-size: 12px; color: var(--text-muted); }
+
+  .table-actions { display: flex; gap: 6px; }
+
+  .empty-state {
+    text-align: center;
+    padding: 36px 0;
+    color: var(--text-faint);
+    font-size: 13px;
+  }
+
+  .progress-bar-wrap { margin-bottom: 28px; }
+  .progress-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    font-weight: 700;
+  }
+  .progress-labels .right { color: var(--gold); }
+  .progress-labels .right.met { color: var(--green); }
+
+  .progress-track {
+    background: var(--border);
+    border-radius: 99px;
+    height: 10px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: 99px;
+    background: var(--gold);
+    transition: width 0.5s ease;
+  }
+  .progress-fill.met { background: var(--green); }
+
+  .progress-note {
+    font-size: 12px;
+    color: var(--green);
+    margin-top: 6px;
+    font-weight: 700;
+  }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+
+  .stat-card {
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+    background: var(--surface);
+  }
+  .stat-card.accent {
+    border-color: var(--gold-light);
+    background: var(--accent-bg);
+  }
+
+  .stat-label {
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    font-weight: 700;
+  }
+
+  .stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .stat-value.accent { color: var(--gold); }
+
+  .total-payout-box {
+    border: 2px solid var(--gold);
+    border-radius: 10px;
+    padding: 24px 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    background: var(--accent-bg);
+  }
+
+  .total-payout-label {
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    font-weight: 700;
+  }
+
+  .total-payout-amount {
+    font-size: 42px;
+    font-weight: 700;
+    color: var(--gold);
+    line-height: 1;
+  }
+
+  .total-payout-breakdown {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 2;
+    text-align: right;
+  }
+
+  .breakdown-section-title {
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--text-faint);
+    margin: 24px 0 14px;
+    font-weight: 700;
+  }
+
+  td.ot-positive { color: var(--green); font-weight: 700; font-size: 12px; }
+  td.ot-remaining { color: var(--text-muted); font-size: 12px; }
+
+  .error-banner {
+    background: #fff0f0;
+    color: var(--red);
+    border-left: 3px solid var(--red);
+    padding: 10px 32px;
+    font-size: 13px;
+    display: none;
+  }
+  .error-banner.visible { display: block; }
+
+  .table-scroll { overflow-x: auto; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-title">
+    <small>每月</small>
+    <h1>工资追踪器</h1>
+  </div>
+  <div class="header-actions">
+    <button class="btn-secondary" onclick="document.getElementById('fileInput').click()">⬆ 导入 Excel</button>
+    <button class="btn-primary" onclick="exportExcel()">⬇ 导出 Excel</button>
+    <input id="fileInput" type="file" accept=".xlsx,.xls" style="display:none" onchange="importExcel(event)" />
+  </div>
+</header>
+
+<div class="error-banner" id="errorBanner"></div>
+
+<main>
+  <!-- 设置 -->
+  <div class="card">
+    <div class="card-title">
+      ⚙ 薪资设置
+      <span class="saved-badge" id="savedBadge">✓ 已保存</span>
+    </div>
+    <div class="form-grid">
+      <div class="field">
+        <label>基本工资 ($)</label>
+        <input type="number" id="basicPay" placeholder="例如：2400" oninput="onSettingChange()" />
+      </div>
+      <div class="field">
+        <label>加班时薪 ($/小时)</label>
+        <input type="number" id="otRate" placeholder="例如：15.50" oninput="onSettingChange()" />
+      </div>
+      <div class="field">
+        <label>规定工时 (小时)</label>
+        <input type="number" id="compHours" placeholder="例如：97" oninput="onSettingChange()" />
+      </div>
+    </div>
+  </div>
+
+  <!-- 标签页 -->
+  <div class="tabs">
+    <button class="tab-btn active" id="tabLog" onclick="switchTab('log')">📋 记录工时</button>
+    <button class="tab-btn" id="tabSummary" onclick="switchTab('summary')">📊 薪资汇总</button>
+  </div>
+
+  <!-- 记录工时面板 -->
+  <div id="panelLog">
+    <div class="card">
+      <div class="card-title" id="formTitle">➕ 添加工作日</div>
+      <div class="form-grid">
+        <div class="field">
+          <label>日期</label>
+          <input type="date" id="fDate" />
+        </div>
+        <div class="field">
+          <label>上班时间</label>
+          <input type="text" id="fStart" placeholder="例如：1030 或 10:30" oninput="updatePreview()" />
+        </div>
+        <div class="field">
+          <label>下班时间</label>
+          <input type="text" id="fEnd" placeholder="例如：2300 或 23:00" oninput="updatePreview()" />
+        </div>
+        <div class="field">
+          <label>备注（选填）</label>
+          <input type="text" id="fNote" placeholder="例如：公共假日" />
+        </div>
+      </div>
+      <div class="preview-hint" id="previewHint"></div>
+      <div class="form-actions">
+        <button class="btn-primary" onclick="addOrUpdate()" id="submitBtn">添加记录</button>
+        <button class="btn-secondary" onclick="cancelEdit()" id="cancelBtn" style="display:none">取消</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" id="recordsTitle">📅 工时记录</div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>日期</th><th>星期</th><th>上班</th><th>下班</th><th>工时</th><th>备注</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="recordsBody"></tbody>
+        </table>
+        <div class="empty-state" id="emptyState">暂无记录，请添加第一条工作记录。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 薪资汇总面板 -->
+  <div id="panelSummary" style="display:none">
+    <div class="card">
+      <div class="card-title">📊 每月薪资汇总</div>
+
+      <div class="progress-bar-wrap">
+        <div class="progress-labels">
+          <span>已工作工时</span>
+          <span class="right" id="progressLabel">—</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progressFill" style="width:0%"></div>
+        </div>
+        <div class="progress-note" id="progressNote" style="display:none">✓ 已完成规定工时 — 开始累计加班费</div>
+      </div>
+
+      <div class="stat-grid" id="statGrid"></div>
+
+      <div class="total-payout-box">
+        <div>
+          <div class="total-payout-label">应发工资总额</div>
+          <div class="total-payout-amount" id="totalPayout">$0.00</div>
+        </div>
+        <div class="total-payout-breakdown" id="payoutBreakdown"></div>
+      </div>
+
+      <div id="dailyBreakdownWrap" style="display:none">
+        <div class="breakdown-section-title">每日工时明细</div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>日期</th><th>星期</th><th>当日工时</th><th>累计工时</th><th>与规定工时对比</th>
+              </tr>
+            </thead>
+            <tbody id="dailyBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const DAYS = ["周日","周一","周二","周三","周四","周五","周六"];
+const SETTINGS_KEY = "salary-tracker-settings";
+
+let records = [];
+let editIdx = null;
+
+function parseTime(str) {
+  str = str.replace(":", "").trim();
+  if (str.length < 3) return null;
+  const h = parseInt(str.slice(0, -2), 10);
+  const m = parseInt(str.slice(-2), 10);
+  if (isNaN(h) || isNaN(m) || h > 23 || m > 59) return null;
+  return h + m / 60;
+}
+
+function hoursWorked(s, e) {
+  if (s == null || e == null) return 0;
+  let diff = e - s;
+  if (diff < 0) diff += 24;
+  return diff;
+}
+
+function fmtHours(h) {
+  const hrs = Math.floor(h);
+  const mins = Math.round((h - hrs) * 60);
+  return `${hrs}小时${String(mins).padStart(2,"0")}分`;
+}
+
+function getSettings() {
+  return {
+    basicPay: parseFloat(document.getElementById("basicPay").value) || 0,
+    otRate: parseFloat(document.getElementById("otRate").value) || 0,
+    compHours: parseFloat(document.getElementById("compHours").value) || 0,
+  };
+}
+
+function loadSettings() {
+  const saved = localStorage.getItem(SETTINGS_KEY);
+  if (saved) {
+    try {
+      const s = JSON.parse(saved);
+      if (s.basicPay) document.getElementById("basicPay").value = s.basicPay;
+      if (s.otRate) document.getElementById("otRate").value = s.otRate;
+      if (s.compulsoryHours) document.getElementById("compHours").value = s.compulsoryHours;
+    } catch(_) {}
+  }
+}
+
+let saveTimer;
+function onSettingChange() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    const s = {
+      basicPay: document.getElementById("basicPay").value,
+      otRate: document.getElementById("otRate").value,
+      compulsoryHours: document.getElementById("compHours").value,
+    };
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+    const badge = document.getElementById("savedBadge");
+    badge.classList.add("visible");
+    setTimeout(() => badge.classList.remove("visible"), 1500);
+    renderSummary();
+  }, 400);
+}
+
+function switchTab(tab) {
+  document.getElementById("panelLog").style.display = tab === "log" ? "" : "none";
+  document.getElementById("panelSummary").style.display = tab === "summary" ? "" : "none";
+  document.getElementById("tabLog").classList.toggle("active", tab === "log");
+  document.getElementById("tabSummary").classList.toggle("active", tab === "summary");
+  if (tab === "summary") renderSummary();
+}
+
+function updatePreview() {
+  const s = parseTime(document.getElementById("fStart").value);
+  const e = parseTime(document.getElementById("fEnd").value);
+  const hint = document.getElementById("previewHint");
+  if (s !== null && e !== null) {
+    hint.textContent = `⏱ 预计工时：${fmtHours(hoursWorked(s, e))}`;
+  } else {
+    hint.textContent = "";
+  }
+}
+
+function addOrUpdate() {
+  const date = document.getElementById("fDate").value;
+  const startTime = document.getElementById("fStart").value.trim();
+  const endTime = document.getElementById("fEnd").value.trim();
+  const note = document.getElementById("fNote").value.trim();
+  if (!date) return alert("请选择日期。");
+  const s = parseTime(startTime);
+  const e = parseTime(endTime);
+  if (s === null || e === null) return alert("请输入有效时间（例如：1030 或 10:30）。");
+  const hrs = hoursWorked(s, e);
+  const entry = { date, startTime, endTime, hours: hrs, note };
+  if (editIdx !== null) {
+    records[editIdx] = entry;
+    editIdx = null;
+  } else {
+    records.push(entry);
+    records.sort((a, b) => a.date.localeCompare(b.date));
+  }
+  clearForm();
+  renderTable();
+}
+
+function clearForm() {
+  ["fDate","fStart","fEnd","fNote"].forEach(id => document.getElementById(id).value = "");
+  document.getElementById("previewHint").textContent = "";
+  document.getElementById("formTitle").textContent = "➕ 添加工作日";
+  document.getElementById("submitBtn").textContent = "添加记录";
+  document.getElementById("cancelBtn").style.display = "none";
+  editIdx = null;
+}
+
+function editRecord(i) {
+  const r = records[i];
+  document.getElementById("fDate").value = r.date;
+  document.getElementById("fStart").value = r.startTime;
+  document.getElementById("fEnd").value = r.endTime;
+  document.getElementById("fNote").value = r.note || "";
+  editIdx = i;
+  document.getElementById("formTitle").textContent = "✏ 编辑记录";
+  document.getElementById("submitBtn").textContent = "更新";
+  document.getElementById("cancelBtn").style.display = "";
+  switchTab("log");
+  updatePreview();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function cancelEdit() {
+  clearForm();
+  renderTable();
+}
+
+function deleteRecord(i) {
+  if (!confirm("确定要删除这条记录吗？")) return;
+  records.splice(i, 1);
+  if (editIdx === i) clearForm();
+  renderTable();
+}
+
+function renderTable() {
+  const tbody = document.getElementById("recordsBody");
+  const empty = document.getElementById("emptyState");
+  const title = document.getElementById("recordsTitle");
+  title.textContent = `📅 工时记录（共 ${records.length} 天）`;
+
+  if (records.length === 0) {
+    tbody.innerHTML = "";
+    empty.style.display = "";
+    return;
+  }
+  empty.style.display = "none";
+  tbody.innerHTML = records.map((r, i) => {
+    const d = new Date(r.date + "T00:00:00");
+    const day = DAYS[d.getDay()];
+    const isWknd = d.getDay() === 0 || d.getDay() === 6;
+    const editing = editIdx === i;
+    return `<tr class="${editing ? "editing" : ""}">
+      <td class="${isWknd ? "weekend" : ""}">${r.date}</td>
+      <td class="muted">${day}</td>
+      <td>${r.startTime}</td>
+      <td>${r.endTime}</td>
+      <td class="hours-cell">${fmtHours(r.hours)}</td>
+      <td class="small">${r.note || ""}</td>
+      <td>
+        <div class="table-actions">
+          <button class="btn-ghost" onclick="editRecord(${i})">编辑</button>
+          <button class="btn-danger" onclick="deleteRecord(${i})">删除</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+function renderSummary() {
+  const { basicPay, otRate, compHours } = getSettings();
+  const totalHours = records.reduce((s, r) => s + (r.hours || 0), 0);
+  const otHours = Math.max(0, totalHours - compHours);
+  const totalSalary = basicPay + otHours * otRate;
+  const pct = compHours > 0 ? Math.min(100, (totalHours / compHours) * 100) : 0;
+  const met = totalHours >= compHours && compHours > 0;
+
+  const fill = document.getElementById("progressFill");
+  fill.style.width = pct + "%";
+  fill.className = "progress-fill" + (met ? " met" : "");
+
+  const plabel = document.getElementById("progressLabel");
+  plabel.textContent = `${fmtHours(totalHours)} / 规定 ${compHours} 小时`;
+  plabel.className = "right" + (met ? " met" : "");
+
+  document.getElementById("progressNote").style.display = met ? "" : "none";
+
+  document.getElementById("statGrid").innerHTML = [
+    { label: "总工时", value: fmtHours(totalHours), accent: false },
+    { label: "加班工时", value: fmtHours(otHours), accent: otHours > 0 },
+    { label: "基本工资", value: `$${basicPay.toFixed(2)}`, accent: false },
+    { label: "加班工资", value: `$${(otHours * otRate).toFixed(2)}`, accent: otHours > 0 },
+  ].map(s => `
+    <div class="stat-card ${s.accent ? "accent" : ""}">
+      <div class="stat-label">${s.label}</div>
+      <div class="stat-value ${s.accent ? "accent" : ""}">${s.value}</div>
+    </div>
+  `).join("");
+
+  document.getElementById("totalPayout").textContent = `$${totalSalary.toFixed(2)}`;
+  document.getElementById("payoutBreakdown").innerHTML =
+    `基本工资 $${basicPay.toFixed(2)}<br>
+     + 加班 ${fmtHours(otHours)} × $${otRate}/小时<br>
+     = 加班费 $${(otHours * otRate).toFixed(2)}`;
+
+  const wrap = document.getElementById("dailyBreakdownWrap");
+  if (records.length === 0) { wrap.style.display = "none"; return; }
+  wrap.style.display = "";
+
+  let running = 0;
+  document.getElementById("dailyBody").innerHTML = records.map((r, i) => {
+    running += r.hours;
+    const diff = running - compHours;
+    const d = new Date(r.date + "T00:00:00");
+    const day = DAYS[d.getDay()];
+    const diffCell = diff >= 0
+      ? `<td class="ot-positive">超出 ${fmtHours(diff)}（加班）</td>`
+      : `<td class="ot-remaining">还差 ${fmtHours(Math.abs(diff))}</td>`;
+    return `<tr>
+      <td>${r.date}</td>
+      <td class="muted">${day}</td>
+      <td class="hours-cell">${fmtHours(r.hours)}</td>
+      <td>${fmtHours(running)}</td>
+      ${diffCell}
+    </tr>`;
+  }).join("");
+}
+
+function exportExcel() {
+  const wsData = [
+    ["=== 设置 ==="],
+    ["基本工资", document.getElementById("basicPay").value],
+    ["加班时薪", document.getElementById("otRate").value],
+    ["规定工时", document.getElementById("compHours").value],
+    [],
+    ["=== 记录 ==="],
+    ["日期","上班时间","下班时间","工作小时数","备注"],
+    ...records.map(r => [r.date, r.startTime, r.endTime, parseFloat(r.hours.toFixed(4)), r.note || ""]),
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws["!cols"] = [{ wch:14 },{ wch:12 },{ wch:12 },{ wch:14 },{ wch:30 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "工资记录");
+  XLSX.writeFile(wb, `工资记录_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+function importExcel(e) {
+  const banner = document.getElementById("errorBanner");
+  banner.classList.remove("visible");
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const wb = XLSX.read(ev.target.result, { type: "binary" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+      let newRecords = [];
+      let inRecords = false;
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        if (String(row[0]).includes("Basic Pay") || String(row[0]).includes("基本工资")) document.getElementById("basicPay").value = row[1];
+        if (String(row[0]).includes("OT Rate") || String(row[0]).includes("加班时薪")) document.getElementById("otRate").value = row[1];
+        if (String(row[0]).includes("Compulsory Hours") || String(row[0]).includes("规定工时")) document.getElementById("compHours").value = row[1];
+        if (String(row[0]) === "Date" || String(row[0]) === "日期") { inRecords = true; continue; }
+        if (inRecords && row[0]) {
+          newRecords.push({ date: String(row[0]), startTime: String(row[1]), endTime: String(row[2]), hours: parseFloat(row[3]) || 0, note: String(row[4]) });
+        }
+      }
+      records = newRecords.sort((a, b) => a.date.localeCompare(b.date));
+      onSettingChange();
+      renderTable();
+    } catch(err) {
+      banner.textContent = "文件解析失败，请确保该文件是由本应用导出的。";
+      banner.classList.add("visible");
+    }
+  };
+  reader.readAsBinaryString(file);
+  e.target.value = "";
+}
+
+loadSettings();
+renderTable();
+</script>
+</body>
+</html>
